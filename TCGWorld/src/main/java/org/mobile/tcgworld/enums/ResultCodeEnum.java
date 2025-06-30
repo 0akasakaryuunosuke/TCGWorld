@@ -26,6 +26,7 @@ public enum ResultCodeEnum {
     CART_NOT_EXIST("702","购物车中不存在该商品"),
     ORDER_NOT_FIND("800","订单不存在"),
     POST_NOT_FIND("900","帖子不见了"),
+    COMMENT_FAIL("1000","创建评论失败"),
     UNDEFINED_ERROR("000","未定义错误");
 
     public String code;
