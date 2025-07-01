@@ -94,7 +94,10 @@ const Discover = () => {
         keyExtractor={(item, index) => item.id?.toString() || index.toString()}
         renderItem={({ item }) => (
           <TouchableOpacity
-            onPress={() => router.push(`../post/${item.id}` as any)}
+            onPress={() => {
+              router.push(`/post/${item.id}` as any);
+              console.log("进入post的id:",item.id)
+          }}
             activeOpacity={0.8}
           >
             <View

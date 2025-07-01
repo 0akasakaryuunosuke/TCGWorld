@@ -16,8 +16,8 @@ const api = axios.create({
     }
     return response.data;
   }
-export const getPostByID = async (id: string) => {
-    const response = await api.get(`getPost/${id}`);
+export const getPostByID = async (data:{id: string,userID?:string}) => {
+    const response = await api.get(`getPost?id=${data.id}&userID=${data.userID}`);
     if(response.data.code!=="200"){
       console.log("getPostByID error:", response.data.msg);
       throw new Error(response.data.msg);

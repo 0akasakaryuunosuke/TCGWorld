@@ -1,6 +1,7 @@
 package org.mobile.tcgworld.Service.Impl;
 
 import org.mobile.tcgworld.Service.PostService;
+import org.mobile.tcgworld.config.IgnoreLogging;
 import org.mobile.tcgworld.dao.PostImageRepository;
 import org.mobile.tcgworld.dao.UserRepository;
 import org.mobile.tcgworld.dto.PostDTO;
@@ -52,7 +53,7 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public PostDTO getPostById(Long id) {
+    public PostDTO getPostById(Long id,Long userID) {
         Optional<Post> post= postRepository.findById(id)
                 .filter(p -> !p.getIsDeleted());
         if(post.isEmpty())
@@ -67,6 +68,8 @@ public class PostServiceImpl implements PostService {
                 .stream()
                 .map(PostImage::getImageUrl)
                 .collect(Collectors.toList()));
+        if(userID!=-1)
+         dto.setIsLiked(hasLiked(userID,id));
         return dto;
     }
 
@@ -98,6 +101,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public List<Post> getPostsByUserId(Long userId) {
+
         return postRepository.findPostsByUserIDAndIsDeletedFalseOrderByCreatedTimeDesc(userId);
     }
 
@@ -152,8 +156,9 @@ public class PostServiceImpl implements PostService {
         else return new ArrayList<>();
     }
 
+    @IgnoreLogging
     @Scheduled(fixedRate = 3000)
-    private void syncLikesToDatabase(){
+    public void syncLikesToDatabase(){
         Set<String> changedPostIds = redisTemplate.opsForSet().members("post:like:changed");
         if (changedPostIds == null || changedPostIds.isEmpty()) return;
         for (String postIdStr : changedPostIds) {

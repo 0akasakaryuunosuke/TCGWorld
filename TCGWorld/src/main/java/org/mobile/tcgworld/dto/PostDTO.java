@@ -2,6 +2,7 @@ package org.mobile.tcgworld.dto;
 
 import lombok.Data;
 import org.mobile.tcgworld.entity.Post;
+import org.mobile.tcgworld.utils.MyUtil;
 import org.springframework.beans.BeanUtils;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,7 @@ public class PostDTO {
     private List<String> imageUrls;
     private Integer like;
     private Boolean isLiked;
+    private String displayTime;
 
     public void fillDTO(Post post){
         id=post.getId();
@@ -26,5 +28,6 @@ public class PostDTO {
         content= post.getContent();
         createdTime=post.getCreatedTime();
         like =post.getLike();
+        displayTime= MyUtil.formatCommentTime(post.getCreatedTime());
     }
 }

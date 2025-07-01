@@ -12,13 +12,13 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/tcgworld/comment")
+@RequestMapping("/api/tcgworld/comments")
 public class CommentController {
     @Autowired
     private CommentService commentService;
 
     @PostMapping("/createComment")
-    public Result createComment(Comment comment){
+    public Result createComment(@RequestBody  Comment comment){
         Optional<Comment> res =commentService.createComment(comment);
         if(res.isEmpty()){
             return Result.error(ResultCodeEnum.COMMENT_FAIL);
@@ -34,6 +34,6 @@ public class CommentController {
                              @RequestParam(defaultValue = "ByLike")FilterType filterType
                              ){
       List<Comment>comments= commentService.findAllCommentsByPostID(postID,pageNumber,pageSize,filterType).getContent();
-      return Result.success(comments);
+      return Result.success(commentService.fillCommentDTO(comments));
     }
 }

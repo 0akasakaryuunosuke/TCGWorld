@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
+import javax.ws.rs.Path;
 import java.util.List;
 
 @RestController
@@ -23,9 +24,9 @@ public class PostController {
         return Result.success(postService.createPost(dto));
     }
 
-    @GetMapping("/getPost/{id}")
-    public Result getPost(@PathVariable String id) {
-       PostDTO dto= postService.getPostById(Long.valueOf(id));
+    @GetMapping("/getPost")
+    public Result getPost(@RequestParam String id, @RequestParam(defaultValue = "-1") String userID) {
+       PostDTO dto= postService.getPostById(Long.valueOf(id),Long.valueOf(userID));
        if (!dto.getId().equals(Long.valueOf(id)))
            return Result.error(ResultCodeEnum.POST_NOT_FIND);
        else{

@@ -9,7 +9,7 @@ import java.util.Optional;
 
 public interface PostService {
     Post createPost(PostDTO dto);
-    PostDTO getPostById(Long id);
+    PostDTO getPostById(Long id,Long userID);
     List<PostDTO> getAllPosts(int pageNumber, int pageSize,Long userID);
     List<Post> getPostsByUserId(Long userId);
     void deletePost(Long id);
