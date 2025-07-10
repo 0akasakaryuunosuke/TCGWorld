@@ -1,7 +1,13 @@
 import { useGlobalContext } from '@/context/GlobalContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Alert,
   Dimensions,
@@ -16,7 +22,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { addComment, getCommentsByPostId } from '../lib/comment';
+import {
+  addComment,
+  getChildrenComments,
+  getCommentsByPostId,
+  likeComment,
+  unlikeComment,
+} from '../lib/comment';
+import { follow, isFollowed, unfollow } from '../lib/follow';
 import { getPostByID, likePost, unlikePost } from '../lib/post';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -24,54 +37,73 @@ const { width: screenWidth } = Dimensions.get('window');
 const PostDetail = () => {
   const route = useRoute();
   const { post_id } = route.params as { post_id: string };
-  const [post, setPost] = useState<any>(null);
   const navigation = useNavigation();
   const { user } = useGlobalContext();
+
+  const [post, setPost] = useState<any>(null);
   const [liked, setLiked] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState<any>(null);
   const inputRef = useRef<TextInput>(null);
-
-  const [pageNumber, setPageNumber] = useState(0);
-  const [pageSize] = useState(10);
+  const [expandedMap, setExpandedMap] = useState<{ [key: number]: boolean }>({});
+  const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchPost = async () => {
-      try {
-        const res = await getPostByID({
-          id: post_id,
-          userID: user?.id ?? '-1',
-        });
-        setPost(res.data);
-        setLiked(res.data.isLiked);
-        navigation.setOptions({
-          title: res.data.userName || '动态详情',
-        });
-      } catch (error) {
-        console.error('获取帖子失败:', error);
-      }
+      const res = await getPostByID({ id: post_id, userID: user?.id ?? '-1' });
+      setPost(res.data);
+      setLiked(res.data.isLiked);
+
+      const is = await isFollowed(Number(user?.id), res.data.userID);
+      setIsFollowing(is.data);
     };
 
     fetchPost();
     fetchComments();
   }, [post_id]);
 
-  const fetchComments = async () => {
+  useLayoutEffect(() => {
+    if (!post) return;
+    navigation.setOptions({
+      title: post.userName || '动态详情',
+      headerRight: () => (
+        <TouchableOpacity onPress={handleFollow} style={{ marginRight: 12 }}>
+          <Text style={{ color: isFollowing ? '#999' : '#007bff', fontSize: 14 }}>
+            {isFollowing ? '已关注' : '+ 关注'}
+          </Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, post, isFollowing]);
+
+  const handleFollow = useCallback(async () => {
+    if (!user) return Alert.alert('提示', '请先登录！');
+    if (!post) return Alert.alert('提示', '帖子尚未加载完成');
+
     try {
-      const res = await getCommentsByPostId(Number(post_id), pageNumber, pageSize, '');
-      setComments(res.data || []);
+      if (isFollowing) {
+        Alert.alert('提示', '确定要取消关注吗?', [{ text: '取消' }, { text: '确定', onPress: async() =>{
+          await unfollow(Number(user.id), post.userID)
+          setIsFollowing(prev => !prev);
+        }}]);
+      } else {
+        await follow(Number(user.id), post.userID);
+        setIsFollowing(prev => !prev);
+      }
+    
     } catch (error) {
-      console.error('加载评论失败:', error);
+      console.error('关注操作失败', error);
     }
+  }, [user, post, isFollowing]);
+
+  const fetchComments = async () => {
+    const res = await getCommentsByPostId(Number(post_id), 0, 10, '');
+    setComments(res.data || []);
   };
 
   const toggleLike = async () => {
-    if (!user) {
-      Alert.alert('提示', '请先登录！');
-      return;
-    }
-
+    if (!user) return Alert.alert('提示', '请先登录！');
     try {
       if (liked) {
         await unlikePost(Number(user.id), post.id);
@@ -81,45 +113,127 @@ const PostDetail = () => {
         setPost((prev: any) => ({ ...prev, like: prev.like + 1 }));
       }
       setLiked(!liked);
-    } catch (error) {
-      console.error('点赞操作失败:', error);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   const handleCommentSubmit = async () => {
-    if (!user) {
-      Alert.alert('提示', '请先登录！');
-      return;
-    }
-
+    if (!user) return Alert.alert('提示', '请先登录！');
     if (!commentText.trim()) return;
 
     try {
       await addComment({
         postID: post.id,
         userID: Number(user.id),
-        content: commentText,
+        content: replyTo ? `回复@${replyTo.userName}:${commentText}` : commentText,
         parentID: replyTo?.id,
       });
       setCommentText('');
       setReplyTo(null);
       Keyboard.dismiss();
       fetchComments();
-    } catch (error) {
-      console.error('评论提交失败:', error);
+    } catch (e) {
+      console.error('评论失败:', e);
     }
   };
 
   const handleReply = (comment: any) => {
-    if (!user) {
-      Alert.alert('提示', '请先登录！');
-      return;
-    }
-
+    if (!user) return Alert.alert('提示', '请先登录！');
     setReplyTo(comment);
     setCommentText('');
     inputRef.current?.focus();
   };
+
+  const toggleExpand = async (commentID: number) => {
+    const isExpanded = expandedMap[commentID];
+    if (!isExpanded) {
+      const target = comments.find(c => c.id === commentID);
+      if (target && target.childrenComment?.length === 0) {
+        const children = await getChildrenComments(commentID);
+        target.childrenComment = children;
+        setComments([...comments]);
+      }
+    }
+    setExpandedMap(prev => ({ ...prev, [commentID]: !isExpanded }));
+  };
+
+  const toggleCommentLike = async (comment: any) => {
+    if (!user) return Alert.alert('提示', '请先登录！');
+    try {
+      if (comment.isLiked) {
+        await unlikeComment(Number(user.id), comment.id);
+        comment.like -= 1;
+      } else {
+        await likeComment(Number(user.id), comment.id);
+        comment.like += 1;
+      }
+      comment.isLiked = !comment.isLiked;
+      setComments([...comments]);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const renderCommentItem = (comment: any, isChild = false) => (
+    <View
+      key={comment.id}
+      style={{
+        marginTop: 12,
+        marginBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginLeft: isChild ? 50 : 0,
+      }}
+    >
+      <Image
+        source={
+          comment.avatarUrl
+            ? { uri: comment.avatarUrl }
+            : require('@/assets/images/default_avatar.png')
+        }
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          marginRight: 10,
+        }}
+      />
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Text style={{ fontWeight: '600', fontSize: 14 }}>{comment.userName || '匿名'}</Text>
+          <Text style={{ color: '#999', fontSize: 12 }}>{comment.displayTime}</Text>
+        </View>
+        <Text style={{ color: '#333', marginTop: 4 }}>{comment.content}</Text>
+        <View style={{ flexDirection: 'row', marginTop: 6, alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => toggleCommentLike(comment)}
+            style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}
+          >
+            <Ionicons
+              name={comment.isLiked ? 'heart' : 'heart-outline'}
+              size={16}
+              color={comment.isLiked ? '#d23f31' : '#999'}
+              style={{ marginRight: 4 }}
+            />
+            <Text style={{ color: comment.isLiked ? '#d23f31' : '#999', fontSize: 12 }}>{comment.like}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleReply(comment)}>
+            <Text style={{ fontSize: 12, color: '#007bff', marginRight: 12 }}>回复</Text>
+          </TouchableOpacity>
+          {!isChild && (
+            <TouchableOpacity onPress={() => toggleExpand(comment.id)}>
+              <Text style={{ fontSize: 12, color: '#888' }}>
+                {expandedMap[comment.id] ? '收起回复' : `查看回复 (${comment.childrenComment?.length || 0})`}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {expandedMap[comment.id] &&
+          comment.childrenComment?.map((child: any) => renderCommentItem(child, true))}
+      </View>
+    </View>
+  );
 
   const dismissKeyboardAndResetReply = () => {
     Keyboard.dismiss();
@@ -151,24 +265,8 @@ const PostDetail = () => {
               showsHorizontalScrollIndicator={false}
               style={{ marginBottom: 16 }}
               renderItem={({ item }) => (
-                <View
-                  style={{
-                    width: screenWidth,
-                    height: 350,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: '#f8f8f8',
-                  }}
-                >
-                  <Image
-                    source={{ uri: item }}
-                    style={{
-                      width: screenWidth - 16,
-                      height: 350,
-                      resizeMode: 'contain',
-                      borderRadius: 10,
-                    }}
-                  />
+                <View style={{ width: screenWidth, height: 350, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f8f8' }}>
+                  <Image source={{ uri: item }} style={{ width: screenWidth - 16, height: 350, resizeMode: 'contain', borderRadius: 10 }} />
                 </View>
               )}
             />
@@ -191,56 +289,7 @@ const PostDetail = () => {
 
           <View style={{ marginTop: 24 }}>
             <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>评论</Text>
-
-            {comments.map((comment, index) => (
-              <View
-                key={index}
-                style={{
-                  marginBottom: 16,
-                  flexDirection: 'row',
-                  alignItems: 'flex-start',
-                }}
-              >
-                <Image
-                  source={
-                    comment.avatarUrl
-                      ? { uri: comment.avatarUrl }
-                      : require('@/assets/images/default_avatar.png')
-                  }
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    marginRight: 10,
-                  }}
-                />
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ fontWeight: '600', fontSize: 14 }}>{comment.userName || '匿名'}</Text>
-                    <Text style={{ color: '#999', fontSize: 12 }}>{comment.displayTime}</Text>
-                  </View>
-
-                  <Text style={{ color: '#333', marginTop: 4 }}>{comment.content}</Text>
-
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      marginTop: 6,
-                      justifyContent: 'flex-start',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, color: '#888', marginRight: 16 }}>
-                      ❤️ {comment.like}
-                    </Text>
-                    <TouchableOpacity onPress={() => handleReply(comment)}>
-                      <Text style={{ fontSize: 12, color: '#007bff' }}>回复</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            ))}
-
+            {comments.map(comment => renderCommentItem(comment))}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
               <TextInput
                 ref={inputRef}

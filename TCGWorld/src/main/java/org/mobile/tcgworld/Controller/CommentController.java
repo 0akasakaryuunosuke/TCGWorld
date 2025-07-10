@@ -33,7 +33,8 @@ public class CommentController {
                              @RequestParam int pageSize,
                              @RequestParam(defaultValue = "ByLike")FilterType filterType
                              ){
-      List<Comment>comments= commentService.findAllCommentsByPostID(postID,pageNumber,pageSize,filterType).getContent();
-      return Result.success(commentService.fillCommentDTO(comments));
+
+      return Result.success(commentService.findAllCommentsByPostID(postID,pageNumber,pageSize,filterType));
     }
+
 }

@@ -30,3 +30,29 @@ const api = axios.create({
     }
     return response.data;
   }
+
+
+export const getChildrenComments = async (parentID: number) => {
+  const response = await api.get(`/getChildrenComment?parentID=${parentID}`);
+  if (response.data.code !== "200") {
+    console.log("getChildrenComments error:", response.data.msg);
+    throw new Error(response.data.msg);
+  }
+  return response.data;
+}
+export const likeComment = async (userID: number, postID: number) => {
+  const response = await api.post("/likeComment", { userID, postID });
+  if (response.data.code !== "200") {
+    console.log("likeComment error:", response.data.msg);
+    throw new Error(response.data.msg);
+  }
+  return response.data;
+}
+export const unlikeComment = async (userID: number, postID: number) => {
+  const response = await api.post("/unlikeComment", { userID, postID });
+  if (response.data.code !== "200") {
+    console.log("unlikeComment error:", response.data.msg);
+    throw new Error(response.data.msg);
+  }
+  return response.data;
+}

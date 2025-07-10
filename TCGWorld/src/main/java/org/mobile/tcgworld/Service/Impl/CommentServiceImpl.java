@@ -31,14 +31,17 @@ public class CommentServiceImpl implements CommentService {
     private UserService userService;
 
     @Override
-    public Page<Comment> findAllCommentsByPostID(Long postID, int pageNumber, int pageSize, FilterType filterType){
+    public List<CommentDTO> findAllCommentsByPostID(Long postID, int pageNumber, int pageSize, FilterType filterType){
         Pageable pageable = PageRequest.of(pageNumber,pageSize);
+        List<CommentDTO>result ;
         if(filterType.equals(FilterType.ByLike)){
-            return commentRepository.findCommentsByPostIDOrderByLikeDesc(postID,pageable);
+          result =fillCommentDTO(commentRepository.findCommentsByPostIDAndParentIDIsNullOrderByLikeDesc(postID,pageable).getContent());
         }
         else{
-            return commentRepository.findCommentsByPostIDOrderByCreateTimeDesc(postID,pageable);
+            result =fillCommentDTO(commentRepository.findCommentsByPostIDAndParentIDIsNullOrderByCreateTimeDesc(postID,pageable).getContent());
         }
+        getChildren(result);
+        return result;
     }
 
     @Override
@@ -59,5 +62,17 @@ public class CommentServiceImpl implements CommentService {
             result.add(dto);
         }
         return result;
+    }
+
+    private void getChildren(List<CommentDTO> commentDTOs){
+
+        for (CommentDTO dto:commentDTOs
+             ) {
+            if(dto.getChildrenComment().isEmpty()){
+              dto.setChildrenComment(fillCommentDTO(commentRepository.
+                             //findTop3ByParentIDOrderByCreateTimeDesc(dto.getId())));
+                              findCommentsByParentIDOrderByCreateTimeDesc(dto.getId())));
+            }
+        }
     }
 }

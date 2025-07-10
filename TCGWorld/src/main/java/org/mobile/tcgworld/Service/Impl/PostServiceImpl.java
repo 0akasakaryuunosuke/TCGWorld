@@ -21,7 +21,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.mobile.tcgworld.dao.PostRepository;
 
-import javax.swing.text.html.Option;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -77,9 +76,33 @@ public class PostServiceImpl implements PostService {
     public List<PostDTO> getAllPosts(int pageNumber, int pageSize ,Long userID) {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
         Page<Post> posts =postRepository.findPostsByIsDeletedFalseOrderByCreatedTimeDesc(pageable);
+        return toDTOs(posts.getContent(),userID);
+    }
+    @Override
+    public List<PostDTO> toDTOs(List<Post> posts){
         List<PostDTO>dtos=new ArrayList<>();
         for (Post post:posts
-             ) {
+        ) {
+            PostDTO dto =new PostDTO();
+            dto.fillDTO(post);
+            dto.setUserName(userRepository.findById(post.getUserID())
+                    .map(User::getUsername)
+                    .orElse(""));
+            dto.setImageUrls( postImageRepository
+                    .findAllByPostID(post.getId())
+                    .stream()
+                    .map(PostImage::getImageUrl)
+                    .collect(Collectors.toList()));
+            dtos.add(dto);
+        }
+        return dtos;
+    }
+
+    @Override
+    public List<PostDTO> toDTOs(List<Post> posts,Long userID){
+        List<PostDTO>dtos=new ArrayList<>();
+        for (Post post:posts
+        ) {
             PostDTO dto =new PostDTO();
             dto.fillDTO(post);
             dto.setUserName(userRepository.findById(post.getUserID())
@@ -98,7 +121,6 @@ public class PostServiceImpl implements PostService {
         }
         return dtos;
     }
-
     @Override
     public List<Post> getPostsByUserId(Long userId) {
 

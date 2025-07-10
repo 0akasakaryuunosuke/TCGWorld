@@ -14,6 +14,7 @@ export default function HomeScreen() {
    <SafeAreaView className='flex-1 bg-myWhite mt-5'>
     <Tab.Navigator
       screenOptions={{
+        lazy: true,
         tabBarIndicatorStyle:{
           backgroundColor:'#98D98E',
         }
