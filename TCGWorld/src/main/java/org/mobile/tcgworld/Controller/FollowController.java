@@ -30,7 +30,8 @@ public class FollowController {
     }
 
     @GetMapping("/isFollowing")
-    public Result isFollowing(@RequestParam Long userID,@RequestParam Long followerID){
+    public Result isFollowing(@RequestParam Long userID,
+                              @RequestParam Long followerID){
         return Result.success(followService.isFollowed(userID, followerID));
     }
 

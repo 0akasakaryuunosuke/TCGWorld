@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
 const API_URL = "http://10.0.2.2:8000/api/tcgworld/oss";
@@ -9,6 +10,15 @@ const api = axios.create({
     },
   });
 
+    api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`; 
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 export const uploadImage = async (uri: string) => {
   try {
     const formData = new FormData();

@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 const API_URL = "http://10.0.2.2:8000/api/tcgworld/follow";
 const api = axios.create({
@@ -8,6 +9,15 @@ const api = axios.create({
     },
   });
 
+    api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`; 
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
   export const follow =async (userID: number, followerID: number)=>{
     const response = await api.post("/doFollow", { userID, followerID });
     if (response.data.code !== "200") {

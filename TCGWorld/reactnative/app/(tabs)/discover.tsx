@@ -12,7 +12,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getAllPosts, likePost, unlikePost } from '../lib/post'; // 添加接口
+import { getAllPosts, likePost, unlikePost } from '../lib/post';
+import asyncStorage from "@react-native-async-storage/async-storage/src/AsyncStorage"; // 添加接口
 
 const PAGE_SIZE = 10;
 
@@ -23,6 +24,7 @@ const Discover = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const { user } = useGlobalContext();
+  const {userToken} =asyncStorage.getItem("token")
   const fetchPosts = async (pageNum: number, isRefresh = false) => {
     try {
       const res = await getAllPosts(pageNum, PAGE_SIZE,Number(user?.id??0));

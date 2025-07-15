@@ -21,4 +21,6 @@ public class User {
 
     @Column()
     private String avatar_url;
+    @Transient
+    private String token;
 }

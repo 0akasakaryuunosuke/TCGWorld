@@ -11,6 +11,15 @@ const api = axios.create({
   },
 });
 
+  api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`; 
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 // 获取所有用户
 export const getUsers = async () => {
   try {
@@ -59,7 +68,8 @@ export const deleteUser = async (id: number) => {
         try {
             const response = await api.post('/login',{email,password})
             await AsyncStorage.setItem('userId', response.data.id);
-            console.log("signIn:",response.data)
+            await AsyncStorage.setItem('token', response.data.user.token);
+            console.log("signIn`s token:",response.data.user.token)
             return response.data;
         } catch (error) {
             throw error;
@@ -71,8 +81,8 @@ export const createUser = async (username: string, email: string, password: stri
     const response = await api.post("/signUp", { username, email, password });
     console.log("createUser:",response.data)
     if (response.data?.id) {
-      await AsyncStorage.setItem('userId', response.data.id.toString());}
-   // await signIn( email, password); // 登录
+      await signIn( email, password); // 登录
+    }
     return response.data;
   } catch (error) {
     console.error("Error creating user:", error);
@@ -83,7 +93,7 @@ export const logout = async () =>{
     try {
         await AsyncStorage.removeItem('currentUsername');
         await AsyncStorage.removeItem('userId');
-
+        await AsyncStorage.removeItem('token');
     } catch (error) {
       console.error("登出失败:",error);
       throw error;

@@ -8,6 +8,7 @@ import { Alert, Image, Pressable, ScrollView, Text, TextInput, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { uploadImage } from '../lib/oss';
 import { publishPost } from '../lib/post';
+import asyncStorage from "@react-native-async-storage/async-storage/src/AsyncStorage";
 
 export default function Add() {
   const [images, setImages] = useState<string[]>([]);
@@ -15,6 +16,7 @@ export default function Add() {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const {user}=useGlobalContext();
+
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,

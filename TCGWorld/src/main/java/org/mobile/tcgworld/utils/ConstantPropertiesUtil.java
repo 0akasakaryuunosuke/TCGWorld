@@ -1,4 +1,4 @@
-package org.mobile.tcgworld.config;
+package org.mobile.tcgworld.utils;
 
 
 import org.springframework.beans.factory.InitializingBean;

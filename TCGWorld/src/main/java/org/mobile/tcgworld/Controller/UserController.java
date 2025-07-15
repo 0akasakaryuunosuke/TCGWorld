@@ -1,10 +1,13 @@
 package org.mobile.tcgworld.Controller;
-import org.mobile.tcgworld.Service.UserService;
+
 import org.mobile.tcgworld.entity.User;
+import org.mobile.tcgworld.utils.TokenUtil;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.mobile.tcgworld.Service.UserService;
 
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +40,7 @@ public class UserController {
                     .orElse(ResponseEntity.notFound().build());
         } catch (NumberFormatException e) {
 
-            return ResponseEntity.badRequest().build(); // 如果id不是数字，返回400
+            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -72,12 +75,8 @@ public class UserController {
     public ResponseEntity<?> login(@RequestBody User userPost) {
         String email = userPost.getEmail();
         String password = userPost.getPassword();
-
-      //  System.out.println("登录请求：" + email + " / " + password);
-
         Optional<User> optionalUser = userService.getUserByEmail(email);
         if (optionalUser.isEmpty()) {
-           // System.out.println("用户不存在");
             return ResponseEntity.status(401).body(Map.of(
                     "status", "fail",
                     "message", "用户名或密码错误"
@@ -86,18 +85,25 @@ public class UserController {
 
         User user = optionalUser.get();
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            //System.out.println("密码不匹配，数据库密码为：" + user.getPassword());
             return ResponseEntity.status(401).body(Map.of(
                     "status", "fail",
                     "message", "用户名或密码错误"
             ));
         }
-
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "登陆成功");
+        String token = TokenUtil.createJWT(user.getId().toString());
+        System.out.println("--------------------"+token);
+        user.setToken(token);
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("message", "登录成功");
         response.put("username", user.getUsername());
         response.put("id", user.getId().toString());
+        response.put("user", Map.of(
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "token", user.getToken()
+        ));
+
         return ResponseEntity.ok(response);
     }
-
 }

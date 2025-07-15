@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 const API_URL = "http://10.0.2.2:8000/api/tcgworld/carts";
 const api = axios.create({
@@ -7,6 +8,16 @@ const api = axios.create({
       "Content-Type": "application/json",
     },
   });
+
+    api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`; 
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
   export const getCart =async(userID:string) =>{
     const response = await api.get(`/getCart/${userID}`);
     if(response.data.code!=="200"){
